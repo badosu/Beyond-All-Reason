@@ -10,6 +10,9 @@ function widget:GetInfo()
 	}
 end
 
+---@type Rect
+local Rect = VFS.Include("common/luaUtilities/rect.lua")
+
 local alwaysShow = true -- always show AT LEAST the label
 local alwaysShowLabel = true -- always show the label regardless
 local showWhenSpec = false
@@ -634,32 +637,26 @@ function Update()
 
 		local tooltipTitle = Spring.I18N("ui.idleBuilders.name")
 		local tooltipAddition = ""
-		if
-			backgroundRect
-			and math_isInRect(x, y, backgroundRect[1], backgroundRect[2], backgroundRect[3], backgroundRect[4])
-		then
-			for i, _ in pairs(groupButtons) do
-				if
-					math_isInRect(x, y, groupButtons[i][1], groupButtons[i][2], groupButtons[i][3], groupButtons[i][4])
-				then
-					local unitDefID = existingGroups[i]
-					if unitDefID then
-						tooltipTitle = Spring.I18N(
-							"ui.idleBuilders.idle",
-							{ unit = unitHumanName[unitDefID], highlightColor = "\255\190\255\190" }
-						)
-						if #idleList[unitDefID] > 1 then
-							tooltipAddition = Spring.I18N("ui.idleBuilders.controls")
-								.. "\n"
-								.. Spring.I18N("ui.idleBuilders.controls1")
-						else
-							tooltipAddition = tooltipAddition .. Spring.I18N("ui.idleBuilders.controls1")
-						end
+		for i, _ in pairs(groupButtons) do
+			if math_isInRect(x, y, groupButtons[i][1], groupButtons[i][2], groupButtons[i][3], groupButtons[i][4]) then
+				local unitDefID = existingGroups[i]
+				if unitDefID then
+					tooltipTitle = Spring.I18N(
+						"ui.idleBuilders.idle",
+						{ unit = unitHumanName[unitDefID], highlightColor = "\255\190\255\190" }
+					)
+					if #idleList[unitDefID] > 1 then
+						tooltipAddition = Spring.I18N("ui.idleBuilders.controls")
+							.. "\n"
+							.. Spring.I18N("ui.idleBuilders.controls1")
+					else
+						tooltipAddition = tooltipAddition .. Spring.I18N("ui.idleBuilders.controls1")
 					end
-					break
 				end
+				break
 			end
 		end
+
 		WG["tooltip"].ShowTooltip("idlebuilders", tooltipAddition, nil, nil, tooltipTitle)
 
 		Spring.SetMouseCursor("cursornormal")

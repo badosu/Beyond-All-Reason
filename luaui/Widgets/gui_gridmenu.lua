@@ -150,33 +150,8 @@ local cycleBuilderKey
 --- RECT HELPER
 -------------------------------------------------------------------------------
 
-local Rect = {}
-function Rect:new(x1, y1, x2, y2)
-	local this = {
-		x = x1,
-		y = y1,
-		xEnd = x2,
-		yEnd = y2,
-	}
-
-	function this:contains(x, y)
-		return x >= self.x and x <= self.xEnd and y >= self.y and y <= self.yEnd
-	end
-
-	function this:getId()
-		return self.x .. self.y .. self.yEnd .. self.xEnd
-	end
-
-	function this:getWidth()
-		return self.xEnd - self.x
-	end
-
-	function this:getHeight()
-		return self.yEnd - self.y
-	end
-
-	return this
-end
+---@type Rect
+local Rect = VFS.Include("common/luaUtilities/rect.lua")
 
 -------------------------------------------------------------------------------
 --- INTERFACE VALUES
