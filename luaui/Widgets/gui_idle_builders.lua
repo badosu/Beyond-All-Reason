@@ -71,6 +71,7 @@ local buildmenuShowingPosY = 0
 local buildmenuAlwaysShow = false
 local buildmenuIsShowing = true
 
+---@type Rect[]
 local groupButtons = {}
 local existingGroups = {}
 local clicks = {}
@@ -327,18 +328,9 @@ local function updateList()
 				local hoveredGroup = -1
 				local x, y, b = spGetMouseState()
 				if groupButtons then
-					for i, _ in pairs(groupButtons) do
-						if
-							math_isInRect(
-								x,
-								y,
-								groupButtons[i][1],
-								groupButtons[i][2],
-								groupButtons[i][3],
-								groupButtons[i][4]
-							)
-						then
-							hoveredGroup = groupButtons[i][5]
+					for _, groupButton in ipairs(groupButtons) do
+						if groupButton:contains(x, y) then
+							hoveredGroup = groupButton.opts.group
 							break
 						end
 					end
@@ -348,7 +340,12 @@ local function updateList()
 				groupButtons = {}
 				for group = 1, maxGroups do
 					if existingGroups[group] then
-						local groupRect = {
+						local unitCount = #idleList[existingGroups[group]]
+						local unitDefID = existingGroups[group]
+
+						gl.Color(1, 1, 1, 1)
+
+						local groupButton = Rect:new(
 							backgroundRect.x
 								+ backgroundPadding
 								+ ((groupSize - backgroundPadding) * groupCounter)
@@ -360,15 +357,10 @@ local function updateList()
 								+ ((groupSize - backgroundPadding) * groupCounter)
 								+ startOffsetX,
 							backgroundRect.yEnd - backgroundPadding,
-						}
-
-						local unitCount = #idleList[existingGroups[group]]
-						local unitDefID = existingGroups[group]
-
-						gl.Color(1, 1, 1, 1)
-						groupButtons[#groupButtons + 1] =
-							{ groupRect[1], groupRect[2], groupRect[3], groupRect[4], group }
-						local paddedGroupSize = groupRect[3] - groupRect[1] - iconMargin - iconMargin
+							{ group = group }
+						)
+						table.insert(groupButtons, groupButton)
+						local paddedGroupSize = groupButton:getWidth() - iconMargin - iconMargin
 						local iconSize = paddedGroupSize * iconSizeMult
 						local offset = 0
 						if showStack then
@@ -401,42 +393,42 @@ local function updateList()
 						if showStack then
 							if unitCount > 4 then
 								drawIcon(unitDefID, {
-									groupRect[1] + iconMargin + (offset * 4),
-									groupRect[4] - iconMargin - (offset * 4) - iconSize,
-									groupRect[1] + iconMargin + (offset * 4) + iconSize,
-									groupRect[4] - iconMargin - (offset * 4),
+									groupButton.x + iconMargin + (offset * 4),
+									groupButton.yEnd - iconMargin - (offset * 4) - iconSize,
+									groupButton.x + iconMargin + (offset * 4) + iconSize,
+									groupButton.yEnd - iconMargin - (offset * 4),
 								}, 0.33, zoom, highlightOpacity)
 							end
 							if unitCount > 3 then
 								drawIcon(unitDefID, {
-									groupRect[1] + iconMargin + (offset * 3),
-									groupRect[4] - iconMargin - (offset * 3) - iconSize,
-									groupRect[1] + iconMargin + (offset * 3) + iconSize,
-									groupRect[4] - iconMargin - (offset * 3),
+									groupButton.x + iconMargin + (offset * 3),
+									groupButton.yEnd - iconMargin - (offset * 3) - iconSize,
+									groupButton.x + iconMargin + (offset * 3) + iconSize,
+									groupButton.yEnd - iconMargin - (offset * 3),
 								}, 0.45, zoom, highlightOpacity)
 							end
 							if unitCount > 2 then
 								drawIcon(unitDefID, {
-									groupRect[1] + iconMargin + (offset * 2),
-									groupRect[4] - iconMargin - (offset * 2) - iconSize,
-									groupRect[1] + iconMargin + (offset * 2) + iconSize,
-									groupRect[4] - iconMargin - (offset * 2),
+									groupButton.x + iconMargin + (offset * 2),
+									groupButton.yEnd - iconMargin - (offset * 2) - iconSize,
+									groupButton.x + iconMargin + (offset * 2) + iconSize,
+									groupButton.yEnd - iconMargin - (offset * 2),
 								}, 0.55, zoom, highlightOpacity)
 							end
 							if unitCount > 1 then
 								drawIcon(unitDefID, {
-									groupRect[1] + iconMargin + offset,
-									groupRect[4] - iconMargin - offset - iconSize,
-									groupRect[1] + iconMargin + offset + iconSize,
-									groupRect[4] - iconMargin - offset,
+									groupButton.x + iconMargin + offset,
+									groupButton.yEnd - iconMargin - offset - iconSize,
+									groupButton.x + iconMargin + offset + iconSize,
+									groupButton.yEnd - iconMargin - offset,
 								}, 0.7, zoom, highlightOpacity)
 							end
 						end
 						drawIcon(unitDefID, {
-							groupRect[1] + iconMargin,
-							groupRect[4] - iconMargin - iconSize,
-							groupRect[1] + iconMargin + iconSize,
-							groupRect[4] - iconMargin,
+							groupButton.x + iconMargin,
+							groupButton.yEnd - iconMargin - iconSize,
+							groupButton.x + iconMargin + iconSize,
+							groupButton.yEnd - iconMargin,
 						}, 1, zoom, highlightOpacity)
 
 						if unitCount > 1 then
@@ -444,8 +436,8 @@ local function updateList()
 							font:Begin()
 							font:Print(
 								"\255\240\240\240" .. unitCount,
-								groupRect[1] + iconMargin + (fontSize * 0.18),
-								groupRect[4] - iconMargin - (fontSize * 0.92),
+								groupButton.x + iconMargin + (fontSize * 0.18),
+								groupButton.yEnd - iconMargin - (fontSize * 0.92),
 								fontSize,
 								"o"
 							)
@@ -635,8 +627,8 @@ function Update()
 
 		local tooltipTitle = Spring.I18N("ui.idleBuilders.name")
 		local tooltipAddition = ""
-		for i, _ in pairs(groupButtons) do
-			if math_isInRect(x, y, groupButtons[i][1], groupButtons[i][2], groupButtons[i][3], groupButtons[i][4]) then
+		for i, groupButton in ipairs(groupButtons) do
+			if groupButton:contains(x, y) then
 				local unitDefID = existingGroups[i]
 				if unitDefID then
 					tooltipTitle = Spring.I18N(
@@ -713,10 +705,8 @@ function widget:MousePress(x, y, button)
 	if backgroundRect:contains(x, y) then
 		local shift = select(4, Spring.GetModKeyState())
 		if button == 1 or button == 3 then
-			for i, _ in pairs(groupButtons) do
-				if
-					math_isInRect(x, y, groupButtons[i][1], groupButtons[i][2], groupButtons[i][3], groupButtons[i][4])
-				then
+			for i, groupButton in pairs(groupButtons) do
+				if groupButton:contains(x, y) then
 					local unitDefID = existingGroups[i]
 					if unitDefID then
 						local units = {}
