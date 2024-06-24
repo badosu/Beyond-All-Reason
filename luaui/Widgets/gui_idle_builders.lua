@@ -47,7 +47,6 @@ local floor = math.floor
 local ceil = math.ceil
 local min = math.min
 local max = math.max
-local math_isInRect = math.isInRect
 
 local GL_SRC_ALPHA = GL.SRC_ALPHA
 local GL_ONE = GL.ONE
@@ -73,11 +72,9 @@ local buildmenuIsShowing = true
 
 ---@type Rect[]
 local groupButtons = {}
-local existingGroups = {}
 local clicks = {}
 
 local nearIdle = 0 -- this means that factories with only X build items left will be shown as idle
-local idleList = {}
 
 local font, font2, buildmenuBottomPosition, dlist, dlistGuishader, ordermenuPosY
 
@@ -220,7 +217,7 @@ local function updateList()
 		dlist = gl.DeleteList(dlist)
 	end
 
-	idleList = {}
+	local idleList = {}
 	local myUnits = spGetTeamUnitsSorted(myTeamID)
 	for unitDefID, units in pairs(myUnits) do
 		if type(units) == "table" then
@@ -237,7 +234,7 @@ local function updateList()
 	end
 
 	numGroups = 0
-	existingGroups = {}
+	local existingGroups = {}
 	for unitDefID, _ in pairs(idleList) do
 		numGroups = numGroups + 1
 		existingGroups[numGroups] = unitDefID
@@ -284,14 +281,14 @@ local function updateList()
 			)
 
 			if numGroups == 0 or alwaysShowLabel then
-				local groupRect = {
+				local groupRect = Rect:new(
 					floor(posX * vsx),
 					floor(posY * vsy),
 					floor(posX * vsx) + usedWidth - (groupWidth * numGroups),
-					floor(posY * vsy) + usedHeight,
-				}
+					floor(posY * vsy) + usedHeight
+				)
 				local fontSize = height * vsy * 0.33
-				local offset = ((groupRect[3] - groupRect[1]) / 5)
+				local offset = groupRect:getWidth() / 5
 				local offsetY = -(fontSize * (posY > 0 and 0.22 or 0.31))
 				local style = "c"
 				font2:Begin()
@@ -299,16 +296,16 @@ local function updateList()
 				offset = (fontSize * 0.6)
 				font2:Print(
 					Spring.I18N("ui.idleBuilders.sleeping"),
-					groupRect[1] + ((groupRect[3] - groupRect[1]) / 2) - offset,
-					groupRect[2] + ((groupRect[4] - groupRect[2]) / 2) + offset + offsetY,
+					groupRect.x + (groupRect:getWidth() / 2) - offset,
+					groupRect.y + (groupRect:getHeight() / 2) + offset + offsetY,
 					fontSize,
 					style
 				)
 				fontSize = fontSize * 1.2
 				font2:Print(
 					Spring.I18N("ui.idleBuilders.sleeping"),
-					groupRect[1] + ((groupRect[3] - groupRect[1]) / 2),
-					groupRect[2] + ((groupRect[4] - groupRect[2]) / 2) + offsetY,
+					groupRect.x + (groupRect:getWidth() / 2),
+					groupRect.y + (groupRect:getHeight() / 2) + offsetY,
 					fontSize,
 					style
 				)
@@ -316,8 +313,8 @@ local function updateList()
 				offset = (fontSize * 0.48)
 				font2:Print(
 					Spring.I18N("ui.idleBuilders.sleeping"),
-					groupRect[1] + ((groupRect[3] - groupRect[1]) / 2) + offset,
-					groupRect[2] + ((groupRect[4] - groupRect[2]) / 2) - offset + offsetY,
+					groupRect.x + (groupRect:getWidth() / 2) + offset,
+					groupRect.y + (groupRect:getHeight() / 2) - offset + offsetY,
 					fontSize,
 					style
 				)
@@ -339,9 +336,10 @@ local function updateList()
 				local groupCounter = 0
 				groupButtons = {}
 				for group = 1, maxGroups do
-					if existingGroups[group] then
-						local unitCount = #idleList[existingGroups[group]]
-						local unitDefID = existingGroups[group]
+					local unitDefID = existingGroups[group]
+					if unitDefID then
+						local unitList = idleList[unitDefID]
+						local unitCount = #unitList
 
 						gl.Color(1, 1, 1, 1)
 
@@ -357,7 +355,7 @@ local function updateList()
 								+ ((groupSize - backgroundPadding) * groupCounter)
 								+ startOffsetX,
 							backgroundRect.yEnd - backgroundPadding,
-							{ group = group }
+							{ group = group, unitDefID = unitDefID, count = unitCount, units = unitList }
 						)
 						table.insert(groupButtons, groupButton)
 						local paddedGroupSize = groupButton:getWidth() - iconMargin - iconMargin
@@ -627,15 +625,15 @@ function Update()
 
 		local tooltipTitle = Spring.I18N("ui.idleBuilders.name")
 		local tooltipAddition = ""
-		for i, groupButton in ipairs(groupButtons) do
+		for _, groupButton in ipairs(groupButtons) do
 			if groupButton:contains(x, y) then
-				local unitDefID = existingGroups[i]
+				local unitDefID = groupButton.opts.unitDefID
 				if unitDefID then
 					tooltipTitle = Spring.I18N(
 						"ui.idleBuilders.idle",
 						{ unit = unitHumanName[unitDefID], highlightColor = "\255\190\255\190" }
 					)
-					if #idleList[unitDefID] > 1 then
+					if groupButton.opts.count > 1 then
 						tooltipAddition = Spring.I18N("ui.idleBuilders.controls")
 							.. "\n"
 							.. Spring.I18N("ui.idleBuilders.controls1")
@@ -702,42 +700,45 @@ function widget:MousePress(x, y, button)
 		return
 	end
 
-	if backgroundRect:contains(x, y) then
-		local shift = select(4, Spring.GetModKeyState())
-		if button == 1 or button == 3 then
-			for i, groupButton in pairs(groupButtons) do
-				if groupButton:contains(x, y) then
-					local unitDefID = existingGroups[i]
-					if unitDefID then
-						local units = {}
-						if shift then
-							units = idleList[unitDefID]
-						else
-							local num = 1
-							if #idleList[unitDefID] > 1 then
-								if clicks[unitDefID] then
-									clicks[unitDefID] = clicks[unitDefID] + 1
-								else
-									clicks[unitDefID] = 1
-								end
-								num = clicks[unitDefID] % #idleList[unitDefID] + 1
+	if not backgroundRect:contains(x, y) then
+		return
+	end
+
+	local shift = select(4, Spring.GetModKeyState())
+	if button == 1 or button == 3 then
+		for _, groupButton in pairs(groupButtons) do
+			if groupButton:contains(x, y) then
+				local unitDefID = groupButton.opts.unitDefID
+				if unitDefID then
+					local count = groupButton.opts.count
+					local units = {}
+					if shift then
+						units = groupButton.opts.units
+					else
+						local num = 1
+						if count > 1 then
+							if clicks[unitDefID] then
+								clicks[unitDefID] = clicks[unitDefID] + 1
+							else
+								clicks[unitDefID] = 1
 							end
-							units = { idleList[unitDefID][num] }
+							num = clicks[unitDefID] % count + 1
 						end
-						Spring.SelectUnitArray(units)
+						units = { groupButton.opts.units[num] }
 					end
-					if button == 3 then
-						Spring.SendCommands("viewselection")
-					end
-					if playSounds then
-						Spring.PlaySoundFile((button == 3 and rightclick or leftclick), soundVolume, "ui")
-					end
-					return true
+					Spring.SelectUnitArray(units)
 				end
+				if button == 3 then
+					Spring.SendCommands("viewselection")
+				end
+				if playSounds then
+					Spring.PlaySoundFile((button == 3 and rightclick or leftclick), soundVolume, "ui")
+				end
+				return true
 			end
 		end
-		return true
 	end
+	return true
 end
 
 function widget:SelectionChanged(sel)
