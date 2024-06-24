@@ -8,18 +8,18 @@
 ---@field opts table The data container
 local Rect = { x = 0, y = 0, xEnd = 0, yEnd = 0, opts = {} }
 
----@param x1 number The start x (left to right)
----@param y1 number The start y (bottom to top)
----@param x2 number The end x (left to right)
----@param y2 number The end y (bottom to top)
+---@param x1? number The start x (left to right)
+---@param y1? number The start y (bottom to top)
+---@param x2? number The end x (left to right)
+---@param y2? number The end y (bottom to top)
 ---@param opts? table The data container
 ---@return Rect
 function Rect:new(x1, y1, x2, y2, opts)
 	local rect = {
-		x = x1,
-		y = y1,
-		xEnd = x2,
-		yEnd = y2,
+		x = x1 or 0,
+		y = y1 or 0,
+		xEnd = x2 or 0,
+		yEnd = y2 or 0,
 		opts = opts or {},
 	}
 

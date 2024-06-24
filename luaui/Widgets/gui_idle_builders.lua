@@ -78,7 +78,9 @@ local clicks = {}
 local nearIdle = 0 -- this means that factories with only X build items left will be shown as idle
 local idleList = {}
 
-local font, font2, buildmenuBottomPosition, dlist, dlistGuishader, backgroundRect, ordermenuPosY
+local font, font2, buildmenuBottomPosition, dlist, dlistGuishader, ordermenuPosY
+
+local backgroundRect = Rect:new()
 
 local isBuilder = {}
 local isFactory = {}
@@ -155,13 +157,13 @@ local function checkGuishader(force)
 			WG["guishader"].RemoveDlist("idlebuilders")
 			dlistGuishader = gl.DeleteList(dlistGuishader)
 		end
-		if not dlistGuishader and backgroundRect then
+		if not dlistGuishader and backgroundRect.opts.shown then
 			dlistGuishader = gl.CreateList(function()
 				RectRound(
-					backgroundRect[1],
-					backgroundRect[2],
-					backgroundRect[3],
-					backgroundRect[4],
+					backgroundRect.x,
+					backgroundRect.y,
+					backgroundRect.xEnd,
+					backgroundRect.yEnd,
 					elementCorner,
 					((posX <= 0) and 0 or 1),
 					1,
@@ -241,10 +243,8 @@ local function updateList()
 	end
 
 	if numGroups == 0 and not alwaysShow then
-		if backgroundRect then
-			backgroundRect = nil
-			checkGuishader(true)
-		end
+		backgroundRect.opts.shown = nil
+		checkGuishader(true)
 	else
 		dlist = gl.CreateList(function()
 			local mult = numGroups
@@ -263,18 +263,19 @@ local function updateList()
 			end
 			usedWidth = (groupWidth * mult) + backgroundPadding + backgroundPadding + startOffsetX
 
-			backgroundRect = {
+			backgroundRect:set(
 				floor(posX * vsx),
 				floor(posY * vsy),
 				floor(posX * vsx) + usedWidth,
 				floor(posY * vsy) + usedHeight,
-			}
+				{ shown = true }
+			)
 
 			UiElement(
-				backgroundRect[1],
-				backgroundRect[2],
-				backgroundRect[3],
-				backgroundRect[4],
+				backgroundRect.x,
+				backgroundRect.y,
+				backgroundRect.xEnd,
+				backgroundRect.yEnd,
 				((posX <= 0) and 0 or 1),
 				1,
 				((posY - height > 0 or posX <= 0) and 1 or 0),
@@ -348,17 +349,17 @@ local function updateList()
 				for group = 1, maxGroups do
 					if existingGroups[group] then
 						local groupRect = {
-							backgroundRect[1]
+							backgroundRect.x
 								+ backgroundPadding
 								+ ((groupSize - backgroundPadding) * groupCounter)
 								+ startOffsetX,
-							backgroundRect[2] + (posY - height > 0 and backgroundPadding or 0),
-							backgroundRect[1]
+							backgroundRect.y + (posY - height > 0 and backgroundPadding or 0),
+							backgroundRect.x
 								+ backgroundPadding
 								+ (groupSize - backgroundPadding)
 								+ ((groupSize - backgroundPadding) * groupCounter)
 								+ startOffsetX,
-							backgroundRect[4] - backgroundPadding,
+							backgroundRect.yEnd - backgroundPadding,
 						}
 
 						local unitCount = #idleList[existingGroups[group]]
@@ -586,8 +587,8 @@ function widget:Initialize()
 	WG["idlebuilders"].getPosition = function()
 		return posX,
 			posY,
-			backgroundRect and backgroundRect[3] or posX,
-			backgroundRect and backgroundRect[4] or posY + usedHeight
+			backgroundRect.opts.shown and backgroundRect.xEnd or posX,
+			backgroundRect.opts.shown and backgroundRect.yEnd or posY + usedHeight
 	end
 	updateList()
 end
@@ -629,10 +630,7 @@ function Update()
 	checkUnitGroupsPos()
 
 	local x, y, b = spGetMouseState()
-	if
-		backgroundRect
-		and math_isInRect(x, y, backgroundRect[1], backgroundRect[2], backgroundRect[3], backgroundRect[4])
-	then
+	if backgroundRect:contains(x, y) then
 		hovered = true
 
 		local tooltipTitle = Spring.I18N("ui.idleBuilders.name")
@@ -712,10 +710,7 @@ function widget:MousePress(x, y, button)
 		return
 	end
 
-	if
-		backgroundRect
-		and math_isInRect(x, y, backgroundRect[1], backgroundRect[2], backgroundRect[3], backgroundRect[4])
-	then
+	if backgroundRect:contains(x, y) then
 		local shift = select(4, Spring.GetModKeyState())
 		if button == 1 or button == 3 then
 			for i, _ in pairs(groupButtons) do
