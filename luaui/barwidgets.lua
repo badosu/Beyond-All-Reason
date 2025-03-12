@@ -2072,7 +2072,7 @@ function widgetHandler:UpdateSelection()
 				end
 			end
 		end
-		if widgetHandler:SelectionChanged(newSelection, subselection) then
+		if widgetHandler:SelectionChanged(newSelection, subselection, widgetHandler.commands) then
 			-- selection changed, don't set old selection to new selection as it is soon to change.
 			tracy.ZoneEnd()
 			return true
@@ -2084,10 +2084,10 @@ function widgetHandler:UpdateSelection()
 	return false
 end
 
-function widgetHandler:SelectionChanged(selectedUnits, subselection)
+function widgetHandler:SelectionChanged(selectedUnits, subselection, commands)
 	tracy.ZoneBeginN("W:SelectionChanged")
 	for _, w in ipairs(self.SelectionChangedList) do
-		local unitArray = w:SelectionChanged(selectedUnits, subselection)
+		local unitArray = w:SelectionChanged(selectedUnits, subselection, commands)
 		if unitArray then
 			Spring.SelectUnitArray(unitArray)
 			tracy.ZoneEnd()
