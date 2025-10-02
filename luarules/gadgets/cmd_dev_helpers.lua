@@ -1017,7 +1017,7 @@ else	-- UNSYNCED
 			return
 		end
 
-		Spring.SendLuaRulesMsg(PACKET_HEADER .. ':removefeaturedef '.. table.concat(words, " ")) -- TODO: Double check words does not remove first argument
+		Spring.SendLuaRulesMsg(PACKET_HEADER .. ':removefeaturedef '.. table.concat(words, " "))
 	end
 
 	function clearWrecks(_, line, words, playerID)
