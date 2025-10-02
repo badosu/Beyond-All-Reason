@@ -581,7 +581,8 @@ if gadgetHandler:IsSyncedCode() then
 				return
 			end
 
-			ExecuteRemoveFeatureDefNames(parts[2])
+			local featureDefNames = parts[2].split(' ')
+			ExecuteRemoveFeatureDefNames(featureDefNames)
 		elseif words[1] == "clearwrecks" then
 			ClearWrecks()
 		elseif words[1] == "fightertest" then
