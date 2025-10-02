@@ -575,6 +575,9 @@ if gadgetHandler:IsSyncedCode() then
 			spawnunitexplosion(words, playerID)
 		elseif words[1] == "removeunitdef" then
 			ExecuteRemoveUnitDefName(words[2])
+		elseif words[1] == "removefeaturedef" then
+			local parts = string.split(msg, ':')
+			ExecuteRemoveUnitDefName(parts)
 		elseif words[1] == "clearwrecks" then
 			ClearWrecks()
 		elseif words[1] == "fightertest" then
@@ -841,56 +844,72 @@ if gadgetHandler:IsSyncedCode() then
 
 	function ExecuteRemoveUnitDefName(unitdefname)
 		local unitDefID = UnitDefNames[unitdefname].id
-		if unitDefID then
-			if FeatureDefNames[unitdefname .. "_dead"] then
-				wreckFeatureDefID = FeatureDefNames[unitdefname .. "_dead"].id
-			end
-			if FeatureDefNames[unitdefname .. "_heap"] then
-				heapFeatureDefID = FeatureDefNames[unitdefname .. "_heap"].id
-			end
-			local allunits = Spring.GetAllUnits()
-			local removedunits = 0
-			local removedwrecks = 0
-			local removedheaps = 0
-			for i, unitID in ipairs(allunits) do
-				if unitDefID == Spring.GetUnitDefID(unitID) then
-					Spring.DestroyUnit(unitID, false, true)
-					removedunits = removedunits + 1
-				end
-			end
-			local allfeatures = Spring.GetAllFeatures()
-			for i, featureID in ipairs(allfeatures) do
-				local featureDefID = Spring.GetFeatureDefID(featureID)
-				if featureDefID == wreckFeatureDefID then
-					Spring.DestroyFeature(featureID)
-					removedwrecks = removedwrecks + 1
-				end
-				if featureDefID == heapFeatureDefID then
-					Spring.DestroyFeature(featureID)
-					removedheaps = removedheaps + 1
-				end
-			end
-
-			Spring.Echo(string.format("Removed %i units, %i wrecks, %i heaps for unitDefName %s",removedunits, removedwrecks, removedheaps, unitdefname ))
-		else
+		if not unitDefID then
 			Spring.Echo("Removeunitdef:", unitdefname, "is not a valid UnitDefName")
+			return
 		end
+
+		local unitFeatureDefNames = {unitdefname .. "_dead", unitdefname .. "_heap"}
+		ExecuteRemoveFeatureDefNames(unitFeatureDefNames)
+
+		local allunits = Spring.GetAllUnits()
+		local removedunits = 0
+		for i, unitID in ipairs(allunits) do
+			if unitDefID == Spring.GetUnitDefID(unitID) then
+				Spring.DestroyUnit(unitID, false, true)
+				removedunits = removedunits + 1
+			end
+		end
+
+		Spring.Echo(string.format("Removed %i units", removedunits))
+	end
+
+	function ExecuteRemoveFeatureDefNames(featureDefNames)
+		local featureDefIDs = {}
+
+		for _, featureDefName in ipairs(featureDefNames) do
+			local featureDef = FeatureDefNames[featureDefName]
+			
+			if featureDef then
+				table.insert(featureDefIDs, featureDef.id)
+			else
+				Spring.Echo("Removeunitdef: Non existent feature def name", featureDefName)
+			end
+		end
+
+		if not next(featureDefIDs) then
+			Spring.Echo("Removeunitdef: No valid feature defs, nothing to be done.", featureDefNames)
+			return
+		end
+		
+		local removedFeaturesCount = 0
+		for _, featureID in ipairs(Spring.GetAllFeatures()) do
+			local featureDefID = Spring.GetFeatureDefID(featureID)
+
+			if featureDefIDs[featureDefID] then
+				Spring.DestroyFeature(featureID)
+				removedFeaturesCount = removedFeaturesCount + 1
+			end
+		end
+
+		Spring.Echo(string.format("Removed %i features for feature names", removedFeaturesCount), featureNames)
+		return removedFeaturesCount
 	end
 
 	function ClearWrecks()
-		local allfeatures = Spring.GetAllFeatures()
-		local removedwrecks = 0
-		for i, featureID in pairs(allfeatures) do
-			local featureDefName = FeatureDefs[Spring.GetFeatureDefID(featureID)].name
-			if string.find(featureDefName, "_dead", nil, true) or string.find(featureDefName, "_heap", nil, true) then
-				Spring.DestroyFeature(featureID)
-				removedwrecks = removedwrecks + 1
+		local featureDefNames = {}
+
+		for _, featureDefName in ipairs(featureDefNames) do
+			local featureDef = FeatureDefNames[featureDefName]
+
+			local isWreck = string.find(featureDefName, "_dead", nil, true) or string.find(featureDefName, "_heap", nil, true)
+			if isWreck then
+				table.insert(featureDefNames, featureDefName)
 			end
 		end
-		Spring.Echo(string.format("Removed %i wrecks and heaps", removedwrecks))
+
+		ExecuteRemoveFeatureDefNames(featureDefNames)
 	end
-
-
 
 else	-- UNSYNCED
 
@@ -980,6 +999,19 @@ else	-- UNSYNCED
 		-- Spring.Echo(words[3])
 		if words[1] and UnitDefNames[words[1]] then
 			Spring.SendLuaRulesMsg(PACKET_HEADER .. ':removeunitdef '.. words[1])
+		end
+	end
+
+	function removeFeatureDef(_, line, words, playerID)
+		if not isAuthorized(Spring.GetMyPlayerID()) then
+			return
+		end
+		-- Spring.Echo(line)
+		-- Spring.Echo(words[1])
+		-- Spring.Echo(words[2])
+		-- Spring.Echo(words[3])
+		if next(words) then
+			Spring.SendLuaRulesMsg(PACKET_HEADER .. ':removefeaturedef '.. table.concat(words, " "))
 		end
 	end
 
