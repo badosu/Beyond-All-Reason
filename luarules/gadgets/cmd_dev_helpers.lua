@@ -997,23 +997,24 @@ else	-- UNSYNCED
 		if not isAuthorized(Spring.GetMyPlayerID()) then
 			return
 		end
-		-- Spring.Echo(line)
-		-- Spring.Echo(words[1])
-		-- Spring.Echo(words[2])
-		-- Spring.Echo(words[3])
-		if words[1] and UnitDefNames[words[1]] then
-			Spring.SendLuaRulesMsg(PACKET_HEADER .. ':removeunitdef '.. words[1])
+
+		if not words[1] or not UnitDefNames[words[1]] then
+			return
 		end
+		
+		Spring.SendLuaRulesMsg(PACKET_HEADER .. ':removeunitdef '.. words[1])
 	end
 
 	function removeFeatureDef(_, line, words, playerID)
+		if not next(words) then
+			return
+		end
+
 		if not isAuthorized(Spring.GetMyPlayerID()) then
 			return
 		end
 
-		if next(words) then
-			Spring.SendLuaRulesMsg(PACKET_HEADER .. ':removefeaturedef '.. table.concat(words, " ")) -- TODO: Double check words does not remove first argument
-		end
+		Spring.SendLuaRulesMsg(PACKET_HEADER .. ':removefeaturedef '.. table.concat(words, " ")) -- TODO: Double check words does not remove first argument
 	end
 
 	function clearWrecks(_, line, words, playerID)
