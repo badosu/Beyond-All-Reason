@@ -577,7 +577,11 @@ if gadgetHandler:IsSyncedCode() then
 			ExecuteRemoveUnitDefName(words[2])
 		elseif words[1] == "removefeaturedef" then
 			local parts = string.split(msg, ':')
-			ExecuteRemoveUnitDefName(parts)
+			if not parts[2] then
+				return
+			end
+
+			ExecuteRemoveFeatureDefNames(parts[2])
 		elseif words[1] == "clearwrecks" then
 			ClearWrecks()
 		elseif words[1] == "fightertest" then
@@ -1006,12 +1010,9 @@ else	-- UNSYNCED
 		if not isAuthorized(Spring.GetMyPlayerID()) then
 			return
 		end
-		-- Spring.Echo(line)
-		-- Spring.Echo(words[1])
-		-- Spring.Echo(words[2])
-		-- Spring.Echo(words[3])
+
 		if next(words) then
-			Spring.SendLuaRulesMsg(PACKET_HEADER .. ':removefeaturedef '.. table.concat(words, " "))
+			Spring.SendLuaRulesMsg(PACKET_HEADER .. ':removefeaturedef '.. table.concat(words, " ")) -- TODO: Double check words does not remove first argument
 		end
 	end
 
