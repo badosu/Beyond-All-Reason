@@ -847,11 +847,13 @@ if gadgetHandler:IsSyncedCode() then
 	end
 
 	function ExecuteRemoveUnitDefName(unitdefname)
-		local unitDefID = UnitDefNames[unitdefname].id
-		if not unitDefID then
+		local unitDef = UnitDefNames[unitdefname]
+		if not unitDef then
 			Spring.Echo("Removeunitdef:", unitdefname, "is not a valid UnitDefName")
 			return
 		end
+
+		local unitDefID = unitDef.id
 
 		local unitFeatureDefNames = {unitdefname .. "_dead", unitdefname .. "_heap"}
 		ExecuteRemoveFeatureDefNames(unitFeatureDefNames)
@@ -994,11 +996,11 @@ else	-- UNSYNCED
 	end
 
 	function removeUnitDef(_, line, words, playerID)
-		if not isAuthorized(Spring.GetMyPlayerID()) then
+		if not next(words) then
 			return
 		end
 
-		if not words[1] or not UnitDefNames[words[1]] then
+		if not isAuthorized(Spring.GetMyPlayerID()) then
 			return
 		end
 		
